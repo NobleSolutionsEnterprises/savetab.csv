@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>SaveTabs Diagnostic</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+        }
+
+        .good {
+            color: green;
+        }
+
+        .bad {
+            color: red;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>SaveTabs Extension Diagnostic</h1>
+
+    <div class="section">
+        <h2>1. Stored Records</h2>
+        <div id="records"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. File Access Test</h2>
+        <div id="fileTest"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Sample Record</h2>
+        <pre id="sampleRecord"></pre>
+    </div>
+
+    <script type="module">
+        // Get records from storage
+        const result = await chrome.storage.local.get(['savedTabs']);
+        const records = result.savedTabs || [];
+
+        document.getElementById('records').innerHTML = `
+            <p>Total records: <strong>${records.length}</strong></p>
+        `;
+
+        // Check if records have imagePath
+        const withPath = records.filter(r => r.imagePath).length;
+        const withoutPath = records.length - withPath;
+
+        document.getElementById('records').innerHTML += `
+            <p>Records with imagePath: <strong class="${withPath > 0 ? 'good' : 'bad'}">${withPath}</strong></p>
+            <p>Records without imagePath: <strong class="${withoutPath > 0 ? 'bad' : 'good'}">${withoutPath}</strong></p>
+        `;
+
+        // Show sample record
+        if (records.length > 0) {
+            const sample = records[records.length - 1]; // Latest record
+            document.getElementById('sampleRecord').textContent = JSON.stringify(sample, null, 2);
+
+            // Test if file access works
+            if (sample.imagePath) {
+                const img = new Image();
+                img.onload = () => {
+                    document.getElementById('fileTest').innerHTML = `
+                        <p class="good">✅ FILE ACCESS WORKING!</p>
+                        <p>Successfully loaded image from: <code>${sample.imagePath}</code></p>
+                        <img src="${sample.imagePath}" style="max-width: 200px; border: 1px solid #ddd;">
+                    `;
+                };
+                img.onerror = (e) => {
+                    document.getElementById('fileTest').innerHTML = `
+                        <p class="bad">❌ FILE ACCESS BLOCKED</p>
+                        <p>Could not load: <code>${sample.imagePath}</code></p>
+                        <p><strong>Action required:</strong></p>
+                        <ol>
+                            <li>Go to <code>chrome://extensions</code></li>
+                            <li>Find "SaveTab.csv"</li>
+                            <li>Click "Details"</li>
+                            <li>Enable "Allow access to file URLs"</li>
+                        </ol>
+                    `;
+                };
+                img.src = sample.imagePath;
+            } else {
+                document.getElementById('fileTest').innerHTML = `
+                    <p class="bad">❌ Latest record has no imagePath</p>
+                    <p>This means it was saved with old code. Try saving a NEW tab after reloading the extension.</p>
+                `;
+            }
+        } else {
+            document.getElementById('sampleRecord').textContent = 'No records found';
+            document.getElementById('fileTest').innerHTML = '<p>No records to test</p>';
+        }
+    </script>
+</body>
+
+</html>

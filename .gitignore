@@ -1,0 +1,16 @@
+# Backup files
+*.bak*
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Test data
+test/
+*.test.js
